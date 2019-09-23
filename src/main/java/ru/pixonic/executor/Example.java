@@ -1,11 +1,12 @@
 package ru.pixonic.executor;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.time.LocalDateTime;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-@Slf4j
 public class Example {
+
+    private static final Logger LOGGER = Logger.getLogger(Example.class.getName());
 
     public static void main(String[] args) throws InterruptedException {
         var backlog = new TaskBacklog<Integer>();
@@ -19,26 +20,26 @@ public class Example {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
-                log.error("Interrupted sleeping");
+                LOGGER.warning("Interrupted sleeping");
             }
 
             // Short event from this thread must be executed AFTER short event from other thread
-            log.debug("Add short event [+1]");
+            LOGGER.info("Add short event [+1]");
             backlog.add(now.plusSeconds(1), () -> {
-                log.debug("Task: 2nd short event");
+                LOGGER.info("Task: 2nd short event");
                 return 1;
             });
-            log.debug("Add long event [+0]");
+            LOGGER.info("Add long event [+0]");
             backlog.add(now.plusSeconds(0), () -> {
-                log.debug("Task: Long event started");
+                LOGGER.info("Task: Long event started");
                 Thread.sleep(5000);
-                log.debug("Task: Long event done");
+                LOGGER.info("Task: Long event done");
                 return 2;
             });
         }).start();
 
         new Thread(() -> {
-            log.debug("Add too far event [+15]");
+            LOGGER.info("Add too far event [+15]");
             backlog.add(now.plusSeconds(15), () -> {
                 // this task must not be executed in this example
                 assert false;
@@ -46,14 +47,14 @@ public class Example {
             });
 
             // Short event from this thread must be executed BEFORE short event from other thread
-            log.debug("Add short event [+1]");
+            LOGGER.info("Add short event [+1]");
             backlog.add(now.plusSeconds(1), () -> {
-                log.debug("Task: 1st short event");
+                LOGGER.info("Task: 1st short event");
                 return 3;
             });
-            log.debug("Add exceptional event [+7]");
+            LOGGER.info("Add exceptional event [+7]");
             backlog.add(now.plusSeconds(7), () -> {
-                log.debug("Task: Exceptional event");
+                LOGGER.info("Task: Exceptional event");
                 throw new Exception("Expected exception");
             });
 
@@ -62,14 +63,14 @@ public class Example {
         // Lets executor work for 10 seconds
         Thread.sleep(10000);
 
-        log.debug("Results:");
+        LOGGER.info("Results:");
         executor.getResults().forEach((id, v) ->
-                log.debug("Task {} executed successfully with result {}", id, v)
+                LOGGER.info(String.format("Task %s executed successfully with result %s", id, v))
         );
 
-        log.debug("Exceptions:");
+        LOGGER.info("Exceptions:");
         executor.getExceptions().forEach((id, e) ->
-                log.error(String.format("Task %s failed with exception:", id), e)
+                LOGGER.log(Level.WARNING, String.format("Task %s failed with exception:", id), e)
         );
     }
 

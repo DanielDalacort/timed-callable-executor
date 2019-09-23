@@ -1,15 +1,12 @@
 package ru.pixonic.executor;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
-@Slf4j
-@RequiredArgsConstructor
 public class TaskBacklogExecutor<T> implements Runnable {
+
+    private static final Logger LOGGER = Logger.getLogger(TaskBacklogExecutor.class.getName());
 
     /**
      * The maximum time to wait, in milliseconds. Stop the executor when time is up.
@@ -30,14 +27,16 @@ public class TaskBacklogExecutor<T> implements Runnable {
     /**
      * Map of task results
      */
-    @Getter
     private Map<String, T> results = new ConcurrentHashMap<>();
 
     /**
      * Map of exceptions that might be thrown during task execution
      */
-    @Getter
     private Map<String, Exception> exceptions = new ConcurrentHashMap<>();
+
+    public TaskBacklogExecutor(TaskBacklog<T> backlog) {
+        this.backlog = backlog;
+    }
 
     /**
      * Starts the async backlog processing without waiting timeout.
@@ -82,7 +81,7 @@ public class TaskBacklogExecutor<T> implements Runnable {
                 }
             } catch (InterruptedException e) {
                 stop();
-                log.warn("Waiting tasks from backlog interrupted. Executor stopped");
+                LOGGER.warning("Waiting tasks from backlog interrupted. Executor stopped");
             }
         }
     }
@@ -96,7 +95,7 @@ public class TaskBacklogExecutor<T> implements Runnable {
             backlog.getReadyForExecutionTask().ifPresent(
                     task -> {
                         try {
-                            log.debug("Start task with requested time {}", task.getTime());
+                            LOGGER.debug("Start task with requested time {}", task.getTime());
                             results.put(task.getId(), task.getCallable().call());
                         } catch (Exception e) {
                             exceptions.put(task.getId(), e);
@@ -114,4 +113,11 @@ public class TaskBacklogExecutor<T> implements Runnable {
         return executorThread != null && executorThread.isAlive();
     }
 
+    public Map<String, T> getResults() {
+        return results;
+    }
+
+    public Map<String, Exception> getExceptions() {
+        return exceptions;
+    }
 }

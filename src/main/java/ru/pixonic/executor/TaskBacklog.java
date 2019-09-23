@@ -1,7 +1,5 @@
 package ru.pixonic.executor;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -12,13 +10,16 @@ import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.logging.Logger;
 
+import static java.lang.String.format;
 import static java.time.LocalDateTime.now;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
-@Slf4j
 public class TaskBacklog<T> {
+
+    private static final Logger LOGGER = Logger.getLogger(TaskBacklog.class.getName());
 
     /**
      * Number of tasks that had been added in backlog for all backlog lifetime
@@ -58,7 +59,7 @@ public class TaskBacklog<T> {
      * @param callable actually the task that should be executed
      */
     public synchronized void add(String id, LocalDateTime time, Callable<T> callable) {
-        log.debug("BL: Add Task {} in backlog", id);
+        LOGGER.fine(format("BL: Add Task %s in backlog", id));
         queue.add(new Task<>(id, counter++, time, callable));
         if (leastTime == null || time.isBefore(leastTime)) {
             leastTime = time;
@@ -106,15 +107,15 @@ public class TaskBacklog<T> {
             synchronized (this) {
                 var task = queue.peek();
                 if (task == null) {
-                    log.debug("BL: Wait for a new task");
+                    LOGGER.fine("BL: Wait for a new task");
                     wait(timeoutMillis);
                 } else {
                     long until = now().until(task.getTime(), ChronoUnit.MILLIS);
                     if (until > 0) {
-                        log.debug("BL: Wait task {} for {}ms", task.getId(), until);
+                        LOGGER.fine(format("BL: Wait task %s for %sms", task.getId(), until));
                         wait(timeoutMillis != 0 ? Math.min(until, timeoutMillis) : until);
                     } else {
-                        log.debug("BL: Return task {}", task.getId());
+                        LOGGER.fine(format("BL: Return task %s", task.getId()));
                         return queue.poll();
                     }
                 }
